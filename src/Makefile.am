@@ -44,6 +44,7 @@ armsoc_drv_ladir = @moduledir@/drivers
 DRMMODE_SRCS = drmmode_exynos/drmmode_exynos.c \
 	drmmode_pl111/drmmode_pl111.c \
 	drmmode_kirin/drmmode_kirin.c \
+	drmmode_meson/drmmode_meson.c \
 	drmmode_rockchip/drmmode_rockchip.c \
 	drmmode_sti/drmmode_sti.c \
 	drmmode_sun4i/drmmode_sun4i.c

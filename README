@@ -12,6 +12,7 @@ The currently supported DRM drivers are:
 - pl111
 - exynos
 - kirin
+- meson
 - rockchip
 - sti
 - sun4i
