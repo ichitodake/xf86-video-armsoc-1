@@ -52,6 +52,12 @@
 
 #include "drmmode_driver.h"
 
+#ifdef XSERVER_PLATFORM_BUS
+#include "xf86platformBus.h"
+#else
+#define ARMSOC_FALLBACK_PROBE
+#endif
+
 #define DRM_DEVICE "/dev/dri/card%d"
 
 Bool armsocDebug;
@@ -60,8 +66,11 @@ Bool armsocDebug;
  * Forward declarations:
  */
 static const OptionInfoRec *ARMSOCAvailableOptions(int chipid, int busid);
+static Bool ARMSOCDriverFunc(ScrnInfoPtr scrn, xorgDriverFuncOp op, void *data);
 static void ARMSOCIdentify(int flags);
+#ifdef ARMSOC_FALLBACK_PROBE
 static Bool ARMSOCProbe(DriverPtr drv, int flags);
+#endif
 static Bool ARMSOCPreInit(ScrnInfoPtr pScrn, int flags);
 static Bool ARMSOCScreenInit(SCREEN_INIT_ARGS_DECL);
 static void ARMSOCLoadPalette(ScrnInfoPtr pScrn, int numColors, int *indices,
@@ -74,6 +83,10 @@ static void ARMSOCAdjustFrame(ADJUST_FRAME_ARGS_DECL);
 static Bool ARMSOCEnterVT(VT_FUNC_ARGS_DECL);
 static void ARMSOCLeaveVT(VT_FUNC_ARGS_DECL);
 static void ARMSOCFreeScreen(FREE_SCREEN_ARGS_DECL);
+#ifdef XSERVER_PLATFORM_BUS
+static Bool ARMSOCPlatformProbe(DriverPtr drv, int entity_num, int flags,
+		struct xf86_platform_device *dev, intptr_t match_data);
+#endif
 
 /**
  * A structure used by the XFree86 code when loading this driver, so that it
@@ -85,14 +98,21 @@ _X_EXPORT DriverRec ARMSOC = {
 		ARMSOC_VERSION,
 		(char *)ARMSOC_DRIVER_NAME,
 		ARMSOCIdentify,
+#ifdef ARMSOC_FALLBACK_PROBE
 		ARMSOCProbe,
+#else
+		NULL,
+#endif
 		ARMSOCAvailableOptions,
 		NULL,
 		0,
-		NULL,
+		ARMSOCDriverFunc,
 #ifdef XSERVER_LIBPCIACCESS
 		NULL,
-		NULL
+		NULL,
+#endif
+#ifdef XSERVER_PLATFORM_BUS
+		ARMSOCPlatformProbe,
 #endif
 };
 
@@ -516,7 +536,11 @@ ARMSOCSetup(pointer module, pointer opts, int *errmaj, int *errmin)
 	/* This module should be loaded only once, but check to be sure: */
 	if (!setupDone) {
 		setupDone = TRUE;
+#ifdef XSERVER_PLATFORM_BUS
+		xf86AddDriver(&ARMSOC, module, HaveDriverFuncs);
+#else
 		xf86AddDriver(&ARMSOC, module, 0);
+#endif
 
 		/* The return value must be non-NULL on success even
 		 * though there is no TearDownProc.
@@ -540,6 +564,20 @@ ARMSOCAvailableOptions(int chipid, int busid)
 	return ARMSOCOptions;
 }
 
+static Bool ARMSOCDriverFunc(ScrnInfoPtr scrn, xorgDriverFuncOp op, void *data)
+{
+	xorgHWFlags *flag;
+
+	switch (op) {
+		case GET_REQUIRED_HW_INTERFACES:
+			flag = (CARD32 *) data;
+			(*flag) = 0;
+			return TRUE;
+		default:
+			return FALSE;
+	}
+}
+
 /**
  * The mandatory Identify() function.  It is run before Probe(), and prints out
  * an identifying message.
@@ -557,6 +595,7 @@ ARMSOCIdentify(int flags)
  * claim the instances, and allocate a ScrnInfoRec.  Only minimal hardware
  * probing is allowed here.
  */
+#ifdef ARMSOC_FALLBACK_PROBE
 static Bool
 ARMSOCProbe(DriverPtr drv, int flags)
 {
@@ -704,7 +743,11 @@ ARMSOCProbe(DriverPtr drv, int flags)
 			pScrn->driverVersion = ARMSOC_VERSION;
 			pScrn->driverName    = (char *)ARMSOC_DRIVER_NAME;
 			pScrn->name          = (char *)ARMSOC_NAME;
+#ifdef ARMSOC_FALLBACK_PROBE
 			pScrn->Probe         = ARMSOCProbe;
+#else
+			pScrn->Probe         = NULL;
+#endif
 			pScrn->PreInit       = ARMSOCPreInit;
 			pScrn->ScreenInit    = ARMSOCScreenInit;
 			pScrn->SwitchMode    = ARMSOCSwitchMode;
@@ -723,6 +766,65 @@ free_sections:
 out:
 	return foundScreen;
 }
+#endif
+
+#ifdef XSERVER_PLATFORM_BUS
+static Bool
+ARMSOCPlatformProbe(DriverPtr drv, int entity_num, int flags,
+		    struct xf86_platform_device *dev, intptr_t match_data)
+{
+	ScrnInfoPtr pScrn;
+	Bool foundScreen = FALSE;
+	struct ARMSOCRec *pARMSOC;
+	char *busid = xf86_get_platform_device_attrib(dev, ODEV_ATTRIB_BUSID);
+
+	EARLY_INFO_MSG("%s: bus ID: %s", __func__, busid);
+
+	connection.bus_id = busid;
+
+	/* Allocate the ScrnInfoRec */
+	pScrn = xf86AllocateScreen(drv, 0);
+	if (!pScrn) {
+		EARLY_ERROR_MSG("Cannot allocate a ScrnInfoPtr");
+		goto out;
+	}
+
+	xf86AddEntityToScreen(pScrn, entity_num);
+
+	/* Allocate the driver's Screen-specific, "private"
+	 * data structure and hook it into the ScrnInfoRec's
+	 * driverPrivate field.
+	 */
+	pScrn->driverPrivate = calloc(1, sizeof(*pARMSOC));
+	if (!pScrn->driverPrivate)
+		goto out;
+
+	pARMSOC = ARMSOCPTR(pScrn);
+	/* initially mark to use all DRM crtcs */
+	pARMSOC->crtcNum = -1;
+
+	foundScreen = TRUE;
+
+	pScrn->driverVersion = ARMSOC_VERSION;
+	pScrn->driverName    = (char *)ARMSOC_DRIVER_NAME;
+	pScrn->name          = (char *)ARMSOC_NAME;
+#ifdef ARMSOC_FALLBACK_PROBE
+	pScrn->Probe         = ARMSOCProbe;
+#else
+	pScrn->Probe         = NULL;
+#endif
+	pScrn->PreInit       = ARMSOCPreInit;
+	pScrn->ScreenInit    = ARMSOCScreenInit;
+	pScrn->SwitchMode    = ARMSOCSwitchMode;
+	pScrn->AdjustFrame   = ARMSOCAdjustFrame;
+	pScrn->EnterVT       = ARMSOCEnterVT;
+	pScrn->LeaveVT       = ARMSOCLeaveVT;
+	pScrn->FreeScreen    = ARMSOCFreeScreen;
+
+out:
+	return foundScreen;
+}
+#endif
 
 /**
  * Find a drmmode driver with the same name as the underlying
