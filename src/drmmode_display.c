@@ -635,7 +635,7 @@ drmmode_cursor_init_plane(ScreenPtr pScreen)
 	struct drmmode_cursor_rec *cursor;
 	drmModePlaneRes *plane_resources;
 	drmModePlane *ovr;
-	int w, h, pad;
+	int i, w, h, pad;
 	uint32_t handles[4], pitches[4], offsets[4]; /* we only use [0] */
 
 	if (drmmode->cursor) {
@@ -666,18 +666,40 @@ drmmode_cursor_init_plane(ScreenPtr pScreen)
 		return FALSE;
 	}
 
-	ovr = drmModeGetPlane(drmmode->fd, plane_resources->planes[0]);
-	if (!ovr) {
-		ERROR_MSG("HW cursor: drmModeGetPlane failed: %s",
-					strerror(errno));
+	/* Find a plane that supports ARGB8888 */
+	for (i = 0; i < plane_resources->count_planes; i++) {
+		int idx;
+
+		ovr = drmModeGetPlane(drmmode->fd, plane_resources->planes[i]);
+		if (!ovr) {
+			ERROR_MSG("HW cursor: drmModeGetPlane %d failed: %s",
+				  i, strerror(errno));
+			continue;
+		}
+
+		for (idx = 0; idx < ovr->count_formats; idx++)
+			if (ovr->formats[idx] == DRM_FORMAT_ARGB8888)
+				break;
+
+		if (idx < ovr->count_formats)
+			break;
+
+		drmModeFreePlane(ovr);
+	}
+
+	if (i == plane_resources->count_planes) {
+		ERROR_MSG("HW cursor: no compatible planes found");
 		drmModeFreePlaneResources(plane_resources);
 		return FALSE;
 	}
+
+	INFO_MSG("Using plane %d as hardware cursor plane\n", i);
 
 	if (pARMSOC->drmmode_interface->init_plane_for_cursor &&
 		pARMSOC->drmmode_interface->init_plane_for_cursor(
 				drmmode->fd, ovr->plane_id)) {
 		ERROR_MSG("Failed driver-specific cursor initialization");
+		drmModeFreePlane(ovr);
 		drmModeFreePlaneResources(plane_resources);
 		return FALSE;
 	}
