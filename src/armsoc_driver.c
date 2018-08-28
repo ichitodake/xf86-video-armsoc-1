@@ -154,6 +154,7 @@ static struct ARMSOCConnection {
 	int fd;
 	int open_count;
 	int master_count;
+	struct xf86_platform_device *platform_dev;
 } connection = {NULL, NULL, 0, -1, 0, 0};
 
 static int
@@ -164,7 +165,11 @@ ARMSOCSetDRMMaster(void)
 	assert(connection.fd >= 0);
 
 	if (!connection.master_count)
-		ret = drmSetMaster(connection.fd);
+#ifdef XF86_PDEV_SERVER_FD
+		if (!(connection.platform_dev &&
+			(connection.platform_dev->flags & XF86_PDEV_SERVER_FD)))
+#endif
+			ret = drmSetMaster(connection.fd);
 
 	if (!ret)
 		connection.master_count++;
@@ -181,7 +186,11 @@ ARMSOCDropDRMMaster(void)
 	assert(connection.master_count > 0);
 
 	if (1 == connection.master_count)
-		ret = drmDropMaster(connection.fd);
+#ifdef XF86_PDEV_SERVER_FD
+		if (!(connection.platform_dev &&
+			(connection.platform_dev->flags & XF86_PDEV_SERVER_FD)))
+#endif
+			ret = drmDropMaster(connection.fd);
 
 	if (!ret)
 		connection.master_count--;
@@ -224,6 +233,16 @@ static int
 ARMSOCOpenDRMCard(void)
 {
 	int fd;
+
+#ifdef XF86_PDEV_SERVER_FD
+	if (connection.platform_dev) {
+		fd = xf86_get_platform_device_int_attrib(connection.platform_dev,
+				ODEV_ATTRIB_FD, -1);
+		EARLY_INFO_MSG("Using FD %d passed in from server", fd);
+		if (fd != -1)
+			return fd;
+	}
+#endif
 
 	if ((connection.bus_id) || (connection.driver_name)) {
 		/* user specified bus ID or driver name - pass to drmOpen */
@@ -300,6 +319,20 @@ fail2:
 	return -1;
 }
 
+static void
+ARMSOCCloseDRMCard(int fd)
+{
+#ifdef XF86_PDEV_SERVER_FD
+	if (!(connection.platform_dev &&
+		connection.platform_dev->flags & XF86_PDEV_SERVER_FD)) {
+		EARLY_INFO_MSG("DRM FD passed from server. Ignoring close request");
+		return;
+	}
+#endif
+
+	drmClose(fd);
+}
+
 static Bool
 ARMSOCOpenDRM(ScrnInfoPtr pScrn)
 {
@@ -325,7 +358,7 @@ ARMSOCOpenDRM(ScrnInfoPtr pScrn)
 		err = drmSetInterfaceVersion(pARMSOC->drmFD, &sv);
 		if (err != 0) {
 			ERROR_MSG("Cannot set the DRM interface version.");
-			drmClose(pARMSOC->drmFD);
+			ARMSOCCloseDRMCard(pARMSOC->drmFD);
 			pARMSOC->drmFD = -1;
 			return FALSE;
 		}
@@ -356,7 +389,7 @@ ARMSOCCloseDRM(ScrnInfoPtr pScrn)
 		connection.open_count--;
 		if (!connection.open_count) {
 			assert(!connection.master_count);
-			drmClose(pARMSOC->drmFD);
+			ARMSOCCloseDRMCard(pARMSOC->drmFD);
 			connection.fd = -1;
 		}
 		pARMSOC->drmFD = -1;
@@ -573,6 +606,10 @@ static Bool ARMSOCDriverFunc(ScrnInfoPtr scrn, xorgDriverFuncOp op, void *data)
 			flag = (CARD32 *) data;
 			(*flag) = 0;
 			return TRUE;
+#ifdef XF86_PDEV_SERVER_FD
+		case SUPPORTS_SERVER_FDS:
+			return TRUE;
+#endif
 		default:
 			return FALSE;
 	}
@@ -694,7 +731,7 @@ ARMSOCProbe(DriverPtr drv, int flags)
 			if (!pScrn) {
 				EARLY_ERROR_MSG(
 						"Cannot allocate a ScrnInfoPtr");
-				drmClose(fd);
+				ARMSOCCloseDRMCard(fd);
 				goto free_sections;
 			}
 			/* Allocate the driver's Screen-specific, "private"
@@ -718,7 +755,7 @@ ARMSOCProbe(DriverPtr drv, int flags)
 				xf86AddBusDeviceToConfigure(ARMSOC_DRIVER_NAME,
 						BUS_NONE, NULL, i);
 				foundScreen = TRUE;
-				drmClose(fd);
+				ARMSOCCloseDRMCard(fd);
 				continue;
 			}
 
@@ -757,7 +794,7 @@ ARMSOCProbe(DriverPtr drv, int flags)
 			pScrn->FreeScreen    = ARMSOCFreeScreen;
 
 			/* would be nice to keep the connection open */
-			drmClose(fd);
+			ARMSOCCloseDRMCard(fd);
 		}
 	}
 free_sections:
@@ -781,6 +818,7 @@ ARMSOCPlatformProbe(DriverPtr drv, int entity_num, int flags,
 	EARLY_INFO_MSG("%s: bus ID: %s", __func__, busid);
 
 	connection.bus_id = busid;
+	connection.platform_dev = dev;
 
 	/* Allocate the ScrnInfoRec */
 	pScrn = xf86AllocateScreen(drv, 0);
