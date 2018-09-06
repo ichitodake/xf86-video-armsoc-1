@@ -45,6 +45,18 @@ in ARMSOCDRI2SwapComplete after the src becomes pARMSOC->scanout and the screen 
 
 The cursor takes a ref on its bo in drmmode_cursor_init and drops it in drmmode_cursor_fini
 
+Known issues
+------------
+If HWCURSOR_API_PLANE is used with Xserver < 1.19.7, it is possible cursor
+animations may trigger an infinite recursion with the timers that handle
+the animation. When using Xserver 1.19, the following patches should be
+applied, or alternatively a version newer than 1.19.6 should be used:
 
+  - animcur: Fix transitions between animated cursors
+  - animcur: Run the timer from the device, not the screen
+  - animcur: Return the next interval directly from the timer callback
+  - animcur: Use fixed-size screen private
 
-
+When HWCURSOR_API_PLANE is used, cursor movement blocks pixmap blitting.
+An obvious example is es2gears: when the cursor is continously moved around,
+the gears appear to stop moving.
