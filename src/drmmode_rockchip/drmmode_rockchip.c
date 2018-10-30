@@ -22,7 +22,12 @@
  *
  */
 
+#include <inttypes.h>
+#include <stdint.h>
+#include <string.h>
+
 #include <xf86drm.h>
+#include <xf86drmMode.h>
 
 #include "../drmmode_driver.h"
 
@@ -41,6 +46,49 @@
  */
 #define CURSORPAD (0)
 
+/*
+ * Attempt to set "zpos" for our cursor plane.
+ * This is not strictly needed as the plane is always above the primary
+ */
+static int init_plane_for_cursor(int drm_fd, uint32_t plane_id)
+{
+	drmModeObjectPropertiesPtr props;
+	int i;
+
+	/* Get properties for our assigned cursor plane */
+	props = drmModeObjectGetProperties(drm_fd, plane_id,
+					   DRM_MODE_OBJECT_PLANE);
+	if (!props)
+		return 0;
+
+	/* Find the "zpos" property */
+	for (i = 0; i < props->count_props; i++) {
+		drmModePropertyPtr prop;
+
+		prop = drmModeGetProperty(drm_fd, props->props[i]);
+		if (!prop)
+			continue;
+
+		/* zpos is a range property. Set it to the maximum value */
+		if (!strncmp(prop->name, "zpos", DRM_PROP_NAME_LEN) &&
+		    drm_property_type_is(prop, DRM_MODE_PROP_RANGE) &&
+		    prop->count_values == 2) {
+			xf86DrvMsg(-1, X_INFO,
+				   "Setting zpos for cursor plane %" PRIu32 " to %" PRIu64 "\n",
+				   plane_id, prop->values[1]);
+			drmModeObjectSetProperty(drm_fd, plane_id,
+						 DRM_MODE_OBJECT_PLANE,
+						 prop->prop_id,
+						 prop->values[1]);
+		}
+
+		drmModeFreeProperty(prop);
+	}
+
+	drmModeFreeObjectProperties(props);
+
+	return 0;
+}
 
 static int create_custom_gem(int fd, struct armsoc_create_gem *create_gem)
 {
@@ -71,8 +119,8 @@ struct drmmode_interface rockchip_interface = {
 	CURSORW               /* cursor width */,
 	CURSORH               /* cursor_height */,
 	CURSORPAD             /* cursor padding */,
-	HWCURSOR_API_PLANE    /* cursor_api */,
-	NULL                  /* init_plane_for_cursor */,
+	HWCURSOR_API_STANDARD    /* cursor_api */,
+	init_plane_for_cursor /* init_plane_for_cursor */,
 	1                     /* vblank_query_supported */,
 	create_custom_gem     /* create_custom_gem */,
 };
