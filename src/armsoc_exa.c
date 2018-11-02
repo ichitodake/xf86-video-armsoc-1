@@ -120,7 +120,7 @@ CreateAccelPixmap(struct ARMSOCPixmapPrivRec *priv, ScreenPtr pScreen, int width
 
 	if (priv->usage_hint == ARMSOC_CREATE_PIXMAP_SCANOUT)
 		buf_type = ARMSOC_BO_SCANOUT;
-
+		
 	if (width > 0 && height > 0 && depth > 0 && bitsPerPixel > 0) {
 		/* Pixmap creates and takes a ref on its bo */
 		priv->bo = armsoc_bo_new_with_dim(pARMSOC->dev,
@@ -168,6 +168,13 @@ ARMSOCCreatePixmap2(ScreenPtr pScreen, int width, int height,
 
 	if (!priv)
 		return NULL;
+		
+	/*
+	 * This fixes OpenGL ES applications which wants to run fullscreen
+	 * and otherwise can't flip the buffers
+	 */
+	if (depth == 32)
+		depth = 24;
 
 	if (!pARMSOC->created_scanout_pixmap) {
 		usage_hint = ARMSOC_CREATE_PIXMAP_SCANOUT;
