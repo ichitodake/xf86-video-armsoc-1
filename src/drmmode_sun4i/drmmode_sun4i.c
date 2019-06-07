@@ -113,11 +113,11 @@ static int create_custom_gem(int fd, struct armsoc_create_gem *create_gem)
 struct drmmode_interface sun4i_interface = {
 	"sun4i-drm"           /* name of drm driver*/,
 	1                     /* use_page_flip_events */,
-	1                     /* use_early_display */,
+	0                     /* use_early_display */,
 	CURSORW               /* cursor width */,
 	CURSORH               /* cursor_height */,
 	CURSORPAD             /* cursor padding */,
-	HWCURSOR_API_PLANE    /* cursor_api */,
+	HWCURSOR_API_NONE    /* cursor_api */,
 	init_plane_for_cursor /* init_plane_for_cursor */,
 	1                     /* vblank_query_supported */,
 	create_custom_gem     /* create_custom_gem */,
