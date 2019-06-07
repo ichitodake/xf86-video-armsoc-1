@@ -4,7 +4,6 @@ Priority: optional
 Maintainer: Maxime Ripard <maxime.ripard@free-electrons.com>
 Standards-Version: 3.9.6
 Build-Depends: debhelper (>= 9),
-               dh-autoreconf,
                libdrm-dev (>= 2.2),
                libudev-dev,
                libxext-dev,
@@ -14,25 +13,14 @@ Build-Depends: debhelper (>= 9),
                x11proto-gl-dev,
                x11proto-xf86dri-dev,
                xutils-dev,
-               xserver-xorg-dev (>= 2:1.9.4)
+               xserver-xorg-dev (>= 2:1.9.4),
+               quilt,
+               dh-autoreconf
 
 Package: xserver-xorg-video-armsoc
-Architecture: armhf arm64
+Architecture: armhf
 Depends: ${shlibs:Depends},
          ${misc:Depends},
          ${xviddriver:Depends}
 Provides: ${xviddriver:Provides}
-Description: X.Org X Server -- ARM SoC display driver
- This driver for the X.Org X server provides support multiple ARM SoC
- platforms. The driver depends on platform DRM support in the kernel.
-
-Package: xserver-xorg-video-armsoc-dbg
-Architecture: armhf arm64
-Depends: xserver-xorg-video-armsoc (= ${binary:Version}),
-	 ${shlibs:Depends},
-	 ${misc:Depends}
-Description: X.Org X server -- ARM SoC display driver (debug symbols)
- This driver for the X.Org X server provides support multiple ARM SoC
- platforms. The driver depends on platform DRM support in the kernel.
- .
- This package provides debugging symbols for this Xorg X driver.
+Description: X.Org X Server -- ARM SoC display driver for sun4i DRM

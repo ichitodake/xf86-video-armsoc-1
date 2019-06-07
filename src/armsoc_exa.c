@@ -121,9 +121,10 @@ CreateAccelPixmap(struct ARMSOCPixmapPrivRec *priv, ScreenPtr pScreen, int width
 	if (priv->usage_hint == ARMSOC_CREATE_PIXMAP_SCANOUT)
 		buf_type = ARMSOC_BO_SCANOUT;
 		
+	
 	if (depth == 32 && bitsPerPixel == 32)
 		depth = 24;
-		
+
 	if (width > 0 && height > 0 && depth > 0 && bitsPerPixel > 0) {
 		/* Pixmap creates and takes a ref on its bo */
 		priv->bo = armsoc_bo_new_with_dim(pARMSOC->dev,
@@ -171,7 +172,7 @@ ARMSOCCreatePixmap2(ScreenPtr pScreen, int width, int height,
 
 	if (!priv)
 		return NULL;
-		
+
 	if (!pARMSOC->created_scanout_pixmap) {
 		usage_hint = ARMSOC_CREATE_PIXMAP_SCANOUT;
 		pARMSOC->created_scanout_pixmap = TRUE;
@@ -263,7 +264,7 @@ ModifyUnAccelPixmapHeader(struct ARMSOCPixmapPrivRec *priv, PixmapPtr pPixmap, i
 		priv->unaccel = malloc(datasize);
 
 		if (!priv->unaccel) {
-			ERROR_MSG("failed to allocate %zu bytes mem",
+			ERROR_MSG("failed to allocate %d bytes mem",
 					datasize);
 			priv->unaccel_size = 0;
 			return FALSE;

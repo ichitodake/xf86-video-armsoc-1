@@ -2,12 +2,6 @@
 
 DH_VERBOSE=1
 
-DPKG_EXPORT_BUILDFLAGS = 1
-include /usr/share/dpkg/buildflags.mk
-
-override_dh_auto_configure:
-	dh_auto_configure -- --libdir=/usr/lib
-
 # Install in debian/tmp to retain control through dh_install:
 override_dh_auto_install:
 	dh_auto_install --destdir=debian/tmp
@@ -17,9 +11,5 @@ override_dh_install:
 	find debian/tmp -name '*.la' -delete
 	dh_install --fail-missing
 
-# Debug package:
-override_dh_strip:
-	dh_strip --dbg-package=xserver-xorg-video-armsoc-dbg
-
 %:
-	dh $@ --with autoreconf,xsf --builddirectory=build/ --parallel
+	dh $@ --with quilt,autoreconf,xsf --builddirectory=build/
