@@ -1,1 +1,3 @@
-xserver-xorg-video-armsoc_1.4-1_armhf.deb x11 optional
+xf86-video-armsoc_1.4-2_armhf.buildinfo x11 optional
+xserver-xorg-video-armsoc-dbgsym_1.4-2_armhf.ddeb debug optional
+xserver-xorg-video-armsoc_1.4-2_armhf.deb x11 optional

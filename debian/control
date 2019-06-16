@@ -18,9 +18,9 @@ Build-Depends: debhelper (>= 9),
                dh-autoreconf
 
 Package: xserver-xorg-video-armsoc
-Architecture: armhf
+Architecture: armhf arm64
 Depends: ${shlibs:Depends},
          ${misc:Depends},
          ${xviddriver:Depends}
 Provides: ${xviddriver:Provides}
-Description: X.Org X Server -- ARM SoC display driver for sun4i DRM
+Description: X.Org X Server -- ARM SoC display driver for rockchip, amlogic and sunxi DRM (mainline kernel)
