@@ -1,0 +1,11 @@
+Package: xserver-xorg-video-armsoc
+Source: xf86-video-armsoc
+Version: 1.4-2
+Architecture: armhf
+Maintainer: Maxime Ripard <maxime.ripard@free-electrons.com>
+Installed-Size: 78
+Depends: libc6 (>= 2.15), libdrm2 (>= 2.4.36), libpixman-1-0, xorg-video-abi-24, xserver-xorg-core (>= 2:1.18.99.901)
+Provides: xorg-driver-video
+Section: x11
+Priority: optional
+Description: X.Org X Server -- ARM SoC display driver for rockchip, amlogic and sunxi DRM (mainline kernel)

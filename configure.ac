@@ -90,4 +90,5 @@ AC_OUTPUT([
 	Makefile
 	src/Makefile
 	man/Makefile
+	etc/Makefile
 ])

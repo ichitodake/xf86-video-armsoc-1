@@ -1,0 +1,5 @@
+4d608198df08ebe056585288f809189a  usr/lib/xorg/modules/drivers/armsoc_drv.so
+26f39126855a41b8ca64ab8dc61dfb7e  usr/share/doc/xserver-xorg-video-armsoc/README
+82c79e2c813f974f0ba3760eebc6dcb2  usr/share/doc/xserver-xorg-video-armsoc/changelog.Debian.gz
+d41d8cd98f00b204e9800998ecf8427e  usr/share/doc/xserver-xorg-video-armsoc/copyright
+332dda66cdccc896f7391296dc818df5  usr/share/man/man4/armsoc.4.gz
